@@ -1,0 +1,37 @@
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-staff-service # "just" a name for this virtualservice, can be any name here
+  namespace: default
+spec:
+  hosts:
+    - fleetman-staff-service.default.svc.cluster.local # suggest to use the fully qualify domain name, Service DNS (ie the regular k8)name that we're applying routing rules to
+  http:
+    - route:
+        - destination: # destination can be go to the different host, but here is same 
+            host: fleetman-staff-service.default.svc.cluster.local # target DNS name
+            subset: safe # defined it in the destination rule 
+          weight: 90
+        - destination:
+            host: fleetman-staff-service.default.svc.cluster.local # target DNS name
+            subset: risky
+          weight: 10
+---
+kind: DestinationRule # Defining which pods should be part of each subset 
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-staff-service
+  namespace: default
+spec:
+  host: fleetman-staff-service.default.svc.cluster.local # service
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        useSourceIp: true
+  subsets:
+    - labels: # a selector
+        version: safe #select a pod where the label match to "safe"
+      name: safe # "just" a name for a group of pod, it found with "safe" label
+    - labels:
+        version: risky
+      name: risky
